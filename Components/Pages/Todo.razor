@@ -1,0 +1,107 @@
+@page "/todo"
+@rendermode InteractiveServer
+@using System.Linq
+@inject IJSRuntime JS
+
+<div class="container">
+    <h1>To Do List</h1>
+    <p class="subtitle">Organize suas tarefas do dia</p>
+
+    <div class="input-box">
+        <input @bind="novaTarefa" placeholder="Add a new task..." />
+        <button @onclick="AdicionarTarefa">+</button>
+    </div>
+
+    <h3>Today (@tarefas.Count(t => !t.Concluida))</h3>
+    <div class="lista">
+        @foreach (var tarefa in tarefas.Where(t => !t.Concluida))
+        {
+            <div class="item">
+                <input type="checkbox" @bind="tarefa.Concluida" @bind:after="Salvar" />
+                <span>@tarefa.Texto</span>
+                <button class="delete" @onclick="() => RemoverTarefa(tarefa)">x</button>
+            </div>
+        }
+    </div>
+
+    <h3 style="margin-top:30px;">
+        Completed (@tarefas.Count(t => t.Concluida))
+    </h3>
+    <div class="lista">
+        @foreach (var tarefa in tarefas.Where(t => t.Concluida))
+        {
+            <div class="item done">
+                <input type="checkbox" @bind="tarefa.Concluida" @bind:after="Salvar" />
+                <span>@tarefa.Texto</span>
+                <button class="delete" @onclick="() => RemoverTarefa(tarefa)">x</button>
+            </div>
+        }
+    </div>
+
+    <!-- 👇 BOTÃO ADICIONADO AQUI -->
+    @if (tarefas.Any(t => t.Concluida))
+{
+    <button class="clear-btn" @onclick="LimparConcluidas">
+        🧹 Limpar concluídas
+    </button>
+}
+</div>
+
+@code {
+    string novaTarefa = "";
+    List<Tarefa> tarefas = new();
+
+    bool carregou = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !carregou)
+        {
+            carregou = true;
+
+            var data = await JS.InvokeAsync<string>("storage.get", "tarefas");
+
+            if (!string.IsNullOrEmpty(data))
+            {
+                tarefas = System.Text.Json.JsonSerializer.Deserialize<List<Tarefa>>(data) ?? new();
+                StateHasChanged();
+            }
+        }
+    }
+
+    async Task Salvar()
+    {
+        var json = System.Text.Json.JsonSerializer.Serialize(tarefas);
+        await JS.InvokeVoidAsync("storage.set", "tarefas", json);
+    }
+
+    async Task AdicionarTarefa()
+    {
+        if (!string.IsNullOrWhiteSpace(novaTarefa))
+        {
+            tarefas.Add(new Tarefa { Texto = novaTarefa });
+            novaTarefa = "";
+
+            await Salvar();
+        }
+    }
+
+    async Task RemoverTarefa(Tarefa tarefa)
+    {
+        tarefas.Remove(tarefa);
+        await Salvar();
+    }
+
+    // 👇 MÉTODO NOVO
+    async Task LimparConcluidas()
+    {
+        tarefas.RemoveAll(t => t.Concluida);
+        await Salvar();
+    }
+
+    class Tarefa
+    {
+        public string Texto { get; set; } = "";
+        public bool Concluida { get; set; }
+    }
+}

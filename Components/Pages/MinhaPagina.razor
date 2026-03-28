@@ -1,0 +1,21 @@
+@page "/minhapagina"
+
+<h1>Minha primeira página 🚀</h1>
+
+<p>Digite seu nome:</p>
+
+<input @bind="nome" placeholder="Seu nome" />
+
+<button @onclick="MostrarMensagem">Enviar</button>
+
+<p>@mensagem</p>
+
+@code {
+    string nome = "";
+    string mensagem = "";
+
+    void MostrarMensagem()
+    {
+        mensagem = $"Bem-vindo, {nome} 😄";
+    }
+}
